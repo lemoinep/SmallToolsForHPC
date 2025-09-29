@@ -7,6 +7,19 @@ import sys
 import numpy as np
 from mpi4py import MPI
 import matplotlib.pyplot as plt
+import platform
+
+
+def detect_os():
+    os_name = platform.system()
+    if os_name == "Linux":
+        return "Linux"
+    elif os_name == "Windows":
+        return "Windows"
+    elif os_name == "Darwin":
+        return "Mac"
+    else:
+        return "Unknown operating system"
 
 class Stats:
     def __init__(self, min_, max_, avg, stddev):
@@ -120,10 +133,24 @@ def plot_matrix(file_name):
     # View
     plt.show()
 
-def save_system_info():
-    """Save system CPU and GPU information to file."""
-    os.system("lscpu > InfoSystemCPU.txt")
-    os.system("lshw -C display > InfoSystemGPU.txt")
+
+def save_system_info(path):
+    """Save system CPU and GPU information to files in the specified directory."""
+    if not os.path.exists(path):
+        os.makedirs(path)
+    
+    os_name = detect_os()
+    if os_name == "Linux":
+        os.system(f"lscpu > {os.path.join(path, 'InfoSystemCPU.txt')}")
+        os.system(f"lshw -C display > {os.path.join(path, 'InfoSystemGPU.txt')}")
+    elif os_name == "Windows":
+        os.system(f"wmic cpu > {os.path.join(path, 'InfoSystemCPU.txt')}")
+        os.system(f'powershell -command "Get-WmiObject win32_VideoController | Format-List" > {os.path.join(path, "InfoSystemGPU.txt")}')
+    elif os_name == "Mac":
+        os.system(f"sysctl -a | grep brand > {os.path.join(path, 'InfoSystemCPU.txt')}")
+        os.system(f"system_profiler SPDisplaysDataType > {os.path.join(path, 'InfoSystemGPU.txt')}")
+
+
 
 def main(path, file_name, num_option, QView, NbPingPong):
     comm = MPI.COMM_WORLD
@@ -139,7 +166,7 @@ def main(path, file_name, num_option, QView, NbPingPong):
         if world_rank == 0:
             plot_matrix(file_name)
     elif num_option == 2 and world_rank == 0:
-        save_system_info()
+        save_system_info(path)
 
 if __name__ == "__main__":
     import argparse
